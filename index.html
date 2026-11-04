@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EASY BILL LK — Super Admin</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font:14px system-ui,Arial,sans-serif;background:#0f172a;color:#e2e8f0}
+button,input,select,textarea{font:inherit}input,select,textarea{width:100%;padding:8px 10px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#e2e8f0}
+button{cursor:pointer;border:0;border-radius:8px;padding:8px 14px;background:#2563eb;color:#fff;font-weight:600}button.g{background:#334155}button.r{background:#b91c1c}
+#login{max-width:340px;margin:12vh auto;padding:22px;background:#1e293b;border-radius:14px}#login h2{margin:0 0 14px}#login input{margin-bottom:10px}
+header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#1e293b;position:sticky;top:0;z-index:5}header b{flex:1;font-size:16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:14px 16px}.st{background:#1e293b;border-radius:12px;padding:12px}.st small{color:#94a3b8}.st h3{margin:4px 0 0;font-size:22px}
+.tabs{display:flex;gap:6px;padding:0 16px;overflow-x:auto}.tabs button{background:#1e293b;color:#cbd5e1}.tabs button.on{background:#2563eb;color:#fff}
+.pane{padding:14px 16px}.wrap{overflow-x:auto;background:#1e293b;border-radius:12px}table{border-collapse:collapse;width:100%;min-width:760px}th,td{padding:9px 11px;text-align:left;border-bottom:1px solid #334155;vertical-align:top}th{color:#94a3b8;font-size:12px;text-transform:uppercase}
+small,.mut{color:#94a3b8}.pill{padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700}.ok{background:#14532d;color:#bbf7d0}.bad{background:#7f1d1d;color:#fecaca}.warn{background:#78350f;color:#fde68a}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;margin-right:6px;box-shadow:0 0 8px #22c55e}
+.card{background:#1e293b;border-radius:12px;padding:14px;margin-bottom:14px}.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}label{display:block;margin:8px 0 4px;color:#94a3b8;font-size:12px}
+#err{background:#7f1d1d;color:#fff;margin:12px 16px;padding:10px 14px;border-radius:10px}pre{background:#0b1220;padding:12px;border-radius:10px;overflow:auto;font-size:12px;max-height:340px}
+#modal{position:fixed;inset:0;background:#000a;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:20px;z-index:9}#modal.on{display:flex}#mb{background:#1e293b;border-radius:14px;padding:18px;width:min(720px,100%)}
+.dev{border:1px solid #334155;border-radius:10px;padding:9px 11px;margin-top:8px}
+#toasts{position:fixed;right:14px;bottom:14px;display:flex;flex-direction:column;gap:8px;z-index:20}.toast{background:#0b1220;border:1px solid #334155;border-left:4px solid #22c55e;padding:10px 14px;border-radius:10px;box-shadow:0 6px 20px #0008}
+tr:hover td{background:#243247}
+</style></head><body>
+
+<div id="login"><h2>🛡️ Super Admin</h2>
+<input id="lu" placeholder="Username" value="superadmin" autocomplete="username"><input id="lp" type="password" placeholder="Password" autocomplete="current-password">
+<button id="lb" style="width:100%">Login</button><p id="lm" style="color:#fca5a5;margin:10px 0 0"></p>
+<p class="mut" style="font-size:12px">First time? Create the account <b>superadmin</b> once (POS → Create account, or Firebase console → Authentication → Add user: <code>superadmin@easybill-lk.firebaseapp.com</code>), then add the rules from the Setup tab.</p></div>
+
+<div id="app" hidden>
+<header><b>🛡️ EASY BILL LK — Super Admin <small class="mut">v1.2</small></b><span class="mut"><span class="dot"></span>Live · updated <span id="clock"></span></span><button class="g" id="out">Logout</button></header>
+<div id="err" hidden></div>
+<div class="stats"><div class="st"><small>Companies</small><h3 id="s1">0</h3></div><div class="st"><small>Online now</small><h3 id="s2" style="color:#4ade80">0</h3></div><div class="st"><small>Devices online</small><h3 id="s3">0</h3></div><div class="st"><small>Suspended / expired</small><h3 id="s4">0</h3></div><div class="st"><small>Expiring ≤ 7 days</small><h3 id="s6" style="color:#fbbf24">0</h3></div><div class="st"><small>Today's sales (all)</small><h3 id="s5">0</h3></div></div>
+<div class="tabs"><button data-t="online" class="on">🟢 Online now</button><button data-t="comp">🏪 Companies</button><button data-t="set">📣 Settings &amp; Notices</button><button data-t="setup">🔧 Setup</button></div>
+
+<div class="pane" id="p-online"><div class="wrap"><table><thead><tr><th>Company</th><th>Cashier</th><th>Device</th><th>Screen · Net · Battery</th><th>Page</th><th>Session</th><th>Today</th><th>Seen</th></tr></thead><tbody id="tb-online"></tbody></table></div></div>
+
+<div class="pane" id="p-comp" hidden><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><input id="q" placeholder="Search company / username…" style="max-width:300px"><select id="f" style="max-width:190px"><option value="all">All companies</option><option value="online">Online now</option><option value="active">Active</option><option value="suspended">Suspended</option><option value="expired">Expired</option><option value="soon">Expiring ≤ 7 days</option><option value="inactive">Inactive 30+ days</option></select><button class="g" id="exp">⬇ Export CSV</button></div><div class="wrap"><table><thead><tr><th>Company</th><th>Status</th><th>Plan</th><th>Expiry</th><th>Version</th><th>Bills</th><th>Devices</th><th>Last active</th><th></th></tr></thead><tbody id="tb-comp"></tbody></table></div></div>
+
+<div class="pane" id="p-set" hidden>
+<div class="card"><h3 style="margin-top:0">App settings (ebConfig/app)</h3><div class="row">
+<div><label>Minimum version (older apps are blocked)</label><input id="c-min" placeholder="1.0.0"></div><div><label>Latest version (shows update banner)</label><input id="c-lat" placeholder="1.1.0"></div>
+<div><label>Download URL</label><input id="c-url" placeholder="https://…"></div><div><label>Contact text (shown on lock screen)</label><input id="c-con" placeholder="Call 07x xxx xxxx"></div></div>
+<p><button id="c-save">Save settings</button> <span id="c-msg" class="mut"></span></p></div>
+<div class="card"><h3 style="margin-top:0">Send notice</h3><div class="row"><div><label>Title</label><input id="a-t"></div><div><label>Level</label><select id="a-l"><option value="info">Info</option><option value="warn">Warning</option><option value="urgent">Urgent</option></select></div><div><label>To</label><select id="a-to"></select></div></div>
+<label>Message</label><textarea id="a-x" rows="2"></textarea><p><button id="a-send">Send notice</button> <span id="a-msg" class="mut"></span></p><div id="a-list"></div></div></div>
+
+<div class="pane" id="p-setup" hidden><div class="card"><h3 style="margin-top:0">One-time setup</h3>
+<ol><li>Firebase console → <b>Authentication</b> → make sure account <code>superadmin@easybill-lk.firebaseapp.com</code> exists (create it <u>first</u>, so nobody else can take that username).</li>
+<li>Firebase console → <b>Firestore Database → Rules</b> → replace everything with the rules below → <b>Publish</b>.</li>
+<li>Open the POS on each shop device once (updated version). They appear here within 2 minutes.</li></ol>
+<button id="cp">Copy rules</button><pre id="rules"></pre>
+<p class="mut">Online = heartbeat received in the last 4½ minutes (POS sends one every 2 min while the app is open). Suspend/expiry is enforced by the POS within ~10 minutes.</p></div></div>
+</div>
+
+<div id="toasts"></div><div id="modal"><div id="mb"></div></div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {getFirestore,collection,doc,onSnapshot,updateDoc,setDoc,addDoc,deleteDoc,deleteField,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+const app=initializeApp({apiKey:"AIzaSyAdwQWp7TH_yXKq6bu579RrrBI3RVQ6nPw",authDomain:"easy-bill-lk.firebaseapp.com",projectId:"easy-bill-lk",storageBucket:"easy-bill-lk.firebasestorage.app",messagingSenderId:"332913611518",appId:"1:332913611518:web:a433dc0fd5a1e30a248baf"});
+const auth=getAuth(app),db=getFirestore(app);
+const $=i=>document.getElementById(i),esc=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const SUPER='superadmin',ONLINE=270000,money=n=>'Rs. '+Number(n||0).toLocaleString('en-LK',{minimumFractionDigits:2,maximumFractionDigits:2});
+const RULES=`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function me() { return request.auth != null; }
+    function sup() { return me() && request.auth.token.email == 'superadmin@easybill-lk.firebaseapp.com'; }
+
+    // each shop's own POS data
+    match /users/{uid}/{p=**} { allow read, write: if me() && (request.auth.uid == uid || sup()); }
+
+    // shop profile + live heartbeat/devices (shop can NOT change its own status/plan/expiry/message)
+    match /ebCustomers/{uid} {
+      allow read: if me() && (request.auth.uid == uid || sup());
+      allow create: if me() && request.auth.uid == uid && request.resource.data.status == 'active';
+      allow update: if me() && request.auth.uid == uid
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status','plan','expiry','message']);
+      allow write: if sup();
+    }
+    match /ebConfig/{d} { allow read: if me(); allow write: if sup(); }
+    match /ebAnnouncements/{d} { allow read: if me(); allow write: if sup(); }
+  }
+}`;
+let cust=[],ann=[],cfg={},unsub=[],prevOn=null;try{$("lu").value=localStorage.getItem("sa_u")||"superadmin"}catch(e){}
+const ms=t=>t&&t.toMillis?t.toMillis():(t&&t.seconds?t.seconds*1000:0);
+const ago=t=>{if(!t)return'—';const s=Math.max(0,(Date.now()-t)/1000|0);return s<60?s+'s ago':s<3600?(s/60|0)+' min ago':s<86400?(s/3600|0)+' h ago':(s/86400|0)+' d ago'};
+const dur=t=>{const m=(t/60000)|0;return m<60?m+' min':(m/60|0)+'h '+(m%60)+'m'};
+const devs=c=>Object.entries(c.devices||{}).map(([id,d])=>({...d,id,last:ms(d.lastActive)||d.ts||0}));
+const isOn=d=>d.state!=='closed'&&Date.now()-d.last<ONLINE;
+const blocked=c=>c.status==='suspended'||(c.expiry&&new Date(c.expiry+'T23:59:59')<new Date());
+const icon=d=>d.type==='Mobile'?'📱':d.type==='Tablet'?'📲':'🖥️';
+const sameDay=t=>t&&new Date(t).toDateString()===new Date().toDateString();
+
+$('rules').textContent=RULES;$('cp').onclick=async()=>{try{await navigator.clipboard.writeText(RULES);$('cp').textContent='Copied ✔'}catch(e){const r=document.createRange();r.selectNode($('rules'));getSelection().addRange(r)}};
+$('lb').onclick=async()=>{const u=$('lu').value.trim().toLowerCase(),p=$('lp').value;try{localStorage.setItem('sa_u',u)}catch(e){}$('lm').textContent='';if(!u||!p){$('lm').textContent='Enter username and password';return}
+ try{await signInWithEmailAndPassword(auth,u.includes('@')?u:u+'@easybill-lk.firebaseapp.com',p)}catch(e){$('lm').textContent=e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'||e.code==='auth/user-not-found'?'Wrong username or password':(e.message||'Login failed')}};
+$('lp').onkeydown=e=>{if(e.key==='Enter')$('lb').click()};
+$('out').onclick=()=>signOut(auth);
+onAuthStateChanged(auth,u=>{
+ unsub.forEach(f=>f());unsub=[];prevOn=null;
+ if(u&&String(u.email||'').split('@')[0]===SUPER){$('login').hidden=true;$('app').hidden=false;start()}
+ else{if(u){signOut(auth);$('lm').textContent='This account is not the super admin.'}$('app').hidden=true;$('login').hidden=false}
+});
+function fail(e){const b=$('err');b.hidden=false;if(e.code==='permission-denied'){b.innerHTML='⚠️ Permission denied by Firestore rules. Open the <b>Setup</b> tab, paste the rules and Publish.';tab('setup')}else b.textContent='Error: '+(e.message||e.code)}
+function start(){
+ unsub.push(onSnapshot(collection(db,'ebCustomers'),s=>{cust=s.docs.map(d=>({uid:d.id,...d.data()}));$('err').hidden=true;render()},fail));
+ unsub.push(onSnapshot(collection(db,'ebAnnouncements'),s=>{ann=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>ms(b.createdAt)-ms(a.createdAt));renderAnn()},()=>{}));
+ unsub.push(onSnapshot(doc(db,'ebConfig','app'),s=>{cfg=s.exists()?s.data():{};if(!document.querySelector('#p-set :focus'))fillCfg()},()=>{}));
+}
+function tab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));['online','comp','set','setup'].forEach(x=>$('p-'+x).hidden=x!==t)}
+document.querySelector('.tabs').onclick=e=>{const b=e.target.closest('button');if(b)tab(b.dataset.t)};
+
+function onlineRows(){const out=[];cust.forEach(c=>{const ds=devs(c);if(ds.length)ds.filter(isOn).forEach(d=>out.push({c,d,t:d.last}));else if(Date.now()-ms(c.lastActive)<ONLINE)out.push({c,d:null,t:ms(c.lastActive)})});return out.sort((a,b)=>b.t-a.t)}
+function render(){
+ $('clock').textContent=new Date().toLocaleTimeString();
+ const on=onlineRows();
+ $('s1').textContent=cust.length;$('s2').textContent=new Set(on.map(r=>r.c.uid)).size;$('s3').textContent=on.filter(r=>r.d).length;$('s4').textContent=cust.filter(blocked).length;$('s6').textContent=cust.filter(soon).length;
+ const ids=new Set(on.map(r=>r.c.uid)),nm=i=>{const c=cust.find(x=>x.uid===i);return c?(c.business||c.username):''};
+ if(prevOn){ids.forEach(i=>{if(!prevOn.has(i))toast('🟢 '+nm(i)+' came online')});prevOn.forEach(i=>{if(!ids.has(i)&&nm(i))toast('⚪ '+nm(i)+' went offline')})}prevOn=ids;
+ document.title=(ids.size?'('+ids.size+' online) ':'')+'EASY BILL LK — Super Admin';
+ $('s5').textContent=money(cust.reduce((a,c)=>a+(sameDay(ms(c.lastActive))?Number(c.todaySales||0):0),0));
+ $('tb-online').innerHTML=on.length?on.map(({c,d,t})=>`<tr><td><span class="dot"></span><b>${esc(c.business||c.username)}</b><br><small>${esc(c.username)}</small></td>
+ <td>${d?esc(d.cashier||'—')+'<br><small>'+esc(d.role||'')+'</small>':'—'}</td>
+ <td>${d?icon(d)+' <b>'+esc(d.browser)+'</b> · '+esc(d.os)+(d.model?' · '+esc(d.model):'')+'<br><small>'+esc(d.type)+' · '+esc(d.mode)+'</small>':'<small>old app version – update POS for device info</small>'}</td>
+ <td>${d?esc(d.screen)+'<br><small>'+esc(d.net||'—')+' · '+esc(d.bat||'—')+'</small>':'—'}</td><td>${d?esc(d.page||'—'):'—'}</td><td>${d&&d.started?dur(Date.now()-d.started):'—'}</td>
+ <td>${money(c.todaySales)}<br><small>${c.todayBills||0} bills</small></td><td>${ago(t)}</td></tr>`).join(''):'<tr><td colspan="8" class="mut" style="text-align:center;padding:26px">Nobody is online right now.</td></tr>';
+ const q=$('q').value.trim().toLowerCase();
+ $('tb-comp').innerHTML=cust.filter(c=>fOk(c)&&(!q||(c.business+' '+c.username).toLowerCase().includes(q))).sort((a,b)=>ms(b.lastActive)-ms(a.lastActive)).map(c=>{const ds=devs(c),n=ds.filter(isOn).length,bl=blocked(c);
+ return`<tr><td><b>${esc(c.business||c.username)}</b><br><small>${esc(c.username)}</small></td><td><span class="pill ${bl?'bad':soon(c)?'warn':'ok'}">${c.status==='suspended'?'Suspended':bl?'Expired':soon(c)?'Expiring':'Active'}</span></td><td>${esc(c.plan||'—')}</td><td>${esc(c.expiry||'—')}</td><td>${esc(c.version||'—')}</td><td>${c.bills||0}</td><td>${n?'<span class="dot"></span>'+n+' online / ':''}${ds.length}</td><td>${ago(ms(c.lastActive))}</td><td><button class="g" data-m="${esc(c.uid)}">Manage</button></td></tr>`}).join('')||'<tr><td colspan="9" class="mut" style="text-align:center;padding:26px">No companies yet — they appear after logging in to the updated POS.</td></tr>';
+ $('a-to').innerHTML='<option value="all">All companies</option>'+cust.map(c=>`<option value="${esc(c.uid)}">${esc(c.business||c.username)}</option>`).join('');
+}
+setInterval(()=>{if(!$('app').hidden)render()},15000);$('q').oninput=render;$('f').onchange=render;
+$('tb-comp').onclick=e=>{const b=e.target.closest('[data-m]');if(b)manage(b.dataset.m)};
+
+function manage(uid){const c=cust.find(x=>x.uid===uid);if(!c)return;
+ $('mb').innerHTML=`<h3 style="margin-top:0">${esc(c.business||c.username)} <small>(${esc(c.username)})</small></h3>
+ <div class="row"><div><label>Status</label><select id="m-st"><option value="active">Active</option><option value="suspended">Suspended (locks the POS)</option></select></div><div><label>Plan</label><select id="m-pl"><option>trial</option><option>basic</option><option>pro</option></select></div><div><label>Expiry date (blank = none)</label><input id="m-ex" type="date"><div style="display:flex;gap:6px;margin-top:6px"><button class="g" data-x="1">+1 month</button><button class="g" data-x="12">+1 year</button></div></div></div>
+ <label>Message shown on lock screen</label><textarea id="m-ms" rows="2"></textarea>
+ <p><button id="m-save">Save</button> <button class="g" id="m-x">Close</button> <button class="r" id="m-del" style="float:right">Delete record</button> <span id="m-msg" class="mut"></span></p>
+ <h4>Devices (${devs(c).length})</h4>${devs(c).sort((a,b)=>b.last-a.last).map(d=>`<div class="dev"><button class="g" data-rd="${esc(d.id)}" style="float:right;padding:3px 9px">Remove</button>${isOn(d)?'<span class="dot"></span>':'⚪ '}${icon(d)} <b>${esc(d.browser)}</b> · ${esc(d.os)}${d.model?' · '+esc(d.model):''} <small>(${esc(d.mode)})</small><br><small>Cashier: ${esc(d.cashier||'—')} (${esc(d.role||'—')}) · Screen ${esc(d.screen)} · ${esc(d.lang)} · ${esc(d.tz)} · ${d.cores||'?'} cores${d.mem?' · '+d.mem+' GB':''} · Seen ${ago(d.last)}<br>ID ${esc(d.id)}</small></div>`).join('')||'<p class="mut">No device info yet.</p>'}
+ <p class="mut">Created ${ms(c.createdAt)?new Date(ms(c.createdAt)).toLocaleString():'—'} · UID ${esc(c.uid)}</p>`;
+ $('m-st').value=c.status==='suspended'?'suspended':'active';$('m-pl').value=c.plan||'trial';$('m-ex').value=c.expiry||'';$('m-ms').value=c.message||'';
+ $('modal').classList.add('on');$('m-x').onclick=()=>$('modal').classList.remove('on');
+ $('mb').querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{const cur=$('m-ex').value,d=cur&&new Date(cur+'T23:59:59')>new Date()?new Date(cur+'T12:00:00'):new Date();d.setMonth(d.getMonth()+Number(b.dataset.x));$('m-ex').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');$('m-st').value='active'});
+ $('mb').querySelectorAll('[data-rd]').forEach(b=>b.onclick=async()=>{try{await updateDoc(doc(db,'ebCustomers',uid),{['devices.'+b.dataset.rd]:deleteField()});setTimeout(()=>manage(uid),400)}catch(e){$('m-msg').textContent='Failed: '+(e.code||e.message)}});
+ $('m-del').onclick=async()=>{if(!confirm('Delete this company record? Their POS data is NOT deleted; the record is re-created (as trial) the next time they open the POS.'))return;try{await deleteDoc(doc(db,'ebCustomers',uid));$('modal').classList.remove('on')}catch(e){$('m-msg').textContent='Failed: '+(e.code||e.message)}};
+ $('m-save').onclick=async()=>{try{await updateDoc(doc(db,'ebCustomers',uid),{status:$('m-st').value,plan:$('m-pl').value,expiry:$('m-ex').value,message:$('m-ms').value.trim()});$('m-msg').textContent='Saved ✔'}catch(e){$('m-msg').textContent='Failed: '+(e.code||e.message)}}}
+$('modal').onclick=e=>{if(e.target.id==='modal')$('modal').classList.remove('on')};
+
+function fillCfg(){$('c-min').value=cfg.minVersion||'';$('c-lat').value=cfg.latestVersion||'';$('c-url').value=cfg.downloadUrl||'';$('c-con').value=cfg.contact||''}
+$('c-save').onclick=async()=>{try{await setDoc(doc(db,'ebConfig','app'),{minVersion:$('c-min').value.trim(),latestVersion:$('c-lat').value.trim(),downloadUrl:$('c-url').value.trim(),contact:$('c-con').value.trim()},{merge:true});$('c-msg').textContent='Saved ✔'}catch(e){$('c-msg').textContent='Failed: '+(e.code||e.message)}};
+$('a-send').onclick=async()=>{const t=$('a-t').value.trim(),x=$('a-x').value.trim(),to=$('a-to').value;if(!t&&!x){$('a-msg').textContent='Enter a title or message';return}
+ try{await addDoc(collection(db,'ebAnnouncements'),{title:t,text:x,level:$('a-l').value,target:to==='all'?'all':'uids',uids:to==='all'?[]:[to],active:true,createdAt:serverTimestamp()});$('a-t').value=$('a-x').value='';$('a-msg').textContent='Sent ✔'}catch(e){$('a-msg').textContent='Failed: '+(e.code||e.message)}};
+function renderAnn(){$('a-list').innerHTML=ann.map(a=>`<div class="dev"><b>${esc(a.title||'Notice')}</b> <span class="pill ${a.level==='urgent'?'bad':a.level==='warn'?'warn':'ok'}">${esc(a.level||'info')}</span> <small>→ ${a.target==='all'?'all':esc(((cust.find(c=>c.uid===(a.uids||[])[0])||{}).business)||'1 company')} · ${a.active===false?'inactive':'active'}</small><br>${esc(a.text||'')}<br>
+ <button class="g" data-ad="${esc(a.id)}">Delete</button></div>`).join('')}
+$('a-list').onclick=async e=>{const b=e.target.closest('[data-ad]');if(b&&confirm('Delete this notice?'))try{await deleteDoc(doc(db,'ebAnnouncements',b.dataset.ad))}catch(x){alert(x.message)}};
+const soon=c=>c.expiry&&!blocked(c)&&new Date(c.expiry+'T23:59:59')-Date.now()<6048e5;
+const fOk=c=>{const f=$('f').value;return f==='all'||(f==='online'&&devs(c).some(isOn))||(f==='active'&&!blocked(c))||(f==='suspended'&&c.status==='suspended')||(f==='expired'&&blocked(c)&&c.status!=='suspended')||(f==='soon'&&soon(c))||(f==='inactive'&&Date.now()-ms(c.lastActive)>2592e6)};
+function toast(t){const e=document.createElement('div');e.className='toast';e.textContent=t;$('toasts').appendChild(e);setTimeout(()=>e.remove(),6000)}
+$('exp').onclick=()=>{const h=['Business','Username','Status','Plan','Expiry','Version','Bills','Today sales','Devices','Online devices','Last active'];
+ const rows=cust.map(c=>{const d=devs(c);return[c.business,c.username,c.status||'active',c.plan,c.expiry,c.version,c.bills,c.todaySales,d.length,d.filter(isOn).length,ms(c.lastActive)?new Date(ms(c.lastActive)).toISOString():'']});
+ const q=v=>{v=String(v==null?'':v);if(/^[=+\-@]/.test(v))v="'"+v;return'"'+v.replace(/"/g,'""')+'"'};
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+[h,...rows].map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv'}));a.download='easybill-companies-'+new Date().toISOString().slice(0,10)+'.csv';a.click()};
+let idle;const bump=()=>{clearTimeout(idle);idle=setTimeout(()=>{if(auth.currentUser)signOut(auth)},30*60000)};['click','keydown','touchstart'].forEach(e=>addEventListener(e,bump,{passive:true}));bump();
+</script></body></html>
